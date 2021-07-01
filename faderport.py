@@ -1,3 +1,5 @@
+# Copyright (c) 2021 Raphaël Doursenaud <rdoursenaud@free.fr>
+
 import collections
 from itertools import cycle, islice
 from collections import namedtuple
@@ -6,44 +8,45 @@ import time
 
 import mido
 
-Button = namedtuple('Button', ['name', 'press', 'light'])
+Button = namedtuple('Button', ['name', 'press'])
 Button.__doc__ = "FaderPort button details."
 Button.name.__doc__ = "Button name, usually what's written on the physical button."
-Button.press.__doc__ = "MIDI note sent when button is pressed and released."
-Button.light.__doc__ = "MIDI note to send to illuminate the button."
+Button.press.__doc__ = "MIDI note sent when button is pressed and released and MIDI note to send to illuminate the button."
 
 # These are the FaderPort buttons, specifically ordered to "snake" down from
 # the top to the bottom. Changing the order will mess up the pattern :-(
 
 BUTTONS = [
-    Button(name='Mute', press=18, light=21),
-    Button(name='Solo', press=17, light=22),
-    Button(name='Rec', press=16, light=23),
-    Button(name='Output', press=22, light=17),
-    Button(name='Chan Up', press=21, light=18),
-    Button(name='Bank', press=20, light=19),
-    Button(name='Chan Down', press=19, light=20),
-    Button(name='Read', press=10, light=13),
-    Button(name='Write', press=9, light=14),
-    Button(name='Touch', press=8, light=15),
-    Button(name='Off', press=23, light=16),
-    Button(name='Undo', press=14, light=9),
-    Button(name='Trns', press=13, light=10),
-    Button(name='Proj', press=12, light=11),
-    Button(name='Mix', press=11, light=12),
-    Button(name='Shift', press=2, light=5),
-    Button(name='Punch', press=1, light=6),
-    Button(name='User', press=0, light=7),
-    Button(name='Loop', press=15, light=8),
-    Button(name='Record', press=7, light=0),
-    Button(name='Play', press=6, light=1),
-    Button(name='Stop', press=5, light=2),
-    Button(name='Fast Fwd', press=4, light=3),
-    Button(name='Rewind', press=3, light=4)
+    Button(name='Solo', press=8),  # FIXME: lights
+    Button(name='Mute', press=16),
+    Button(name='Arm', press=0),
+    Button(name='Shift', press=70),
+    Button(name='Bypass', press=3),
+    Button(name='Touch', press=77),
+    Button(name='Write', press=75),
+    Button(name='Read', press=74),
+    Button(name='Prev', press=46),
+    Button(name='Knob', press=32),
+    Button(name='Next', press=47),
+    Button(name='Link', press=5),
+    Button(name='Pan', press=42),
+    Button(name='Channel', press=54),
+    Button(name='Scroll', press=56),
+    Button(name='Master', press=58),
+    Button(name='Click', press=59),
+    Button(name='Section', press=60),
+    Button(name='Marker', press=61),
+    Button(name='Loop', press=86),
+    Button(name='Rewind', press=91),
+    Button(name='Forward', press=92),
+    Button(name='Stop', press=93),
+    Button(name='Play', press=94),
+    Button(name='Record', press=95),
+    Button(name='Pedal', press=102)
 ]
 
 _button_from_name = {x.name: x for x in BUTTONS}
-_button_from_name["Rec Arm"] = _button_from_name["Rec"]  # Add an alias
+#_button_from_name["Rec Arm"] = _button_from_name["Rec"]  # Add an alias
 _button_from_press = {x.press: x for x in BUTTONS}
 
 
@@ -68,17 +71,17 @@ def button_from_press(press: int) -> Button:
 # characters maps characters to the indices of the buttons that will
 # display that character (as a matrix) when lit.
 CHARACTERS = {
-    '0': (0, 1, 3, 6, 7, 9, 10, 11, 13, 14, 15, 18, 20, 21, 22),
-    '1': (1, 4, 5, 9, 12, 17, 19, 20, 21, 22),
-    '2': (0, 1, 3, 6, 10, 12, 16, 19, 20, 21, 22, 23),
-    '3': (0, 1, 3, 6, 9, 11, 15, 18, 20, 21, 22),
-    '4': (1, 4, 5, 7, 9, 11, 12, 13, 14, 17, 20, 21),
-    '5': (0, 1, 2, 6, 7, 8, 9, 11, 15, 18, 20, 21, 22),
-    # '5': (0, 1, 2, 5, 8, 9, 11, 16, 18, 20, 21),
-    '6': (0, 1, 2, 6, 7, 8, 9, 11, 14, 15, 18, 20, 21, 22),
-    '7': (3, 4, 5, 6, 10, 12, 16, 23),
-    '8': (0, 1, 3, 6, 8, 9, 11, 14, 15, 18, 20, 21, 22),
-    '9': (0, 1, 3, 6, 8, 9, 10, 11, 15, 18, 20, 21, 22),
+    '0': (0, 1, 2, 3, 4, 7, 11, 14, 15, 16, 17, 18),
+    '1': (1, 2, 4, 6, 13, 15, 16, 17, 18),
+    '2': (1, 2, 4, 7, 10, 12, 15, 16, 17, 18),
+    '3': (1, 2, 4, 7, 8, 10, 11, 14, 16, 17),
+    '4': (2, 5, 8, 10, 11, 12, 13, 14, 18),
+    '5': (1, 2, 4, 7, 8, 13, 15, 16, 17, 18),
+    # FIXME
+    '6': (0, 1, 2, 3, 4, 8, 10, 11, 14, 15, 16, 17, 18),
+    '7': (0, 1, 2, 3, 7, 13, 16),
+    '8': (0, 1, 2, 3, 5, 6, 12, 13, 15, 16, 17, 18),
+    '9': (0, 1, 2, 3, 4, 7, 8, 10, 14, 15, 16, 17, 18),
     'A': (4, 5, 7, 10, 11, 12, 13, 14, 15, 18, 19, 23),
     'B': (4, 5, 6, 7, 10, 12, 13, 14, 15, 18, 20, 21, 22, 23),
     'C': (4, 5, 7, 10, 14, 15, 18, 20, 21, 22),
@@ -129,7 +132,7 @@ class FaderPort(ABC):
     def __init__(self):
         self.inport = None
         self.outport = None
-        self._fader = 0
+        self._fader = -8192
         self._msb = 0
 
     def __enter__(self):
@@ -150,7 +153,7 @@ class FaderPort(ABC):
         """
         self.inport = mido.open_input(find_faderport_input_name(number))
         self.outport = mido.open_output(find_faderport_output_name(number))
-        self.outport.send(mido.Message.from_bytes([0x91, 0, 0x64]))  # A reset message???
+        #self.outport.send(mido.Message.from_bytes([0x91, 0, 0x64]))  # A reset message???
         time.sleep(0.01)
         self.inport.callback = self._message_callback
         self.on_open()
@@ -158,7 +161,7 @@ class FaderPort(ABC):
     def close(self):
         self.on_close()
         self.inport.callback = None
-        self.fader = 0
+        self.fader = -8192
         self.all_off()
         self.outport.reset()
         self.inport.close()
@@ -176,19 +179,30 @@ class FaderPort(ABC):
 
     def _message_callback(self, msg):
         """Callback function to handle incoming MIDI messages."""
-        if msg.type == 'polytouch':
-            button = button_from_press(msg.note)
-            if button:
-                self.on_button(button, msg.value != 0)
-            elif msg.note == 127:
-                self.on_fader_touch(msg.value != 0)
-        elif msg.type == 'control_change' and msg.control == 0:
-            self._msb = msg.value
-        elif msg.type == 'control_change' and msg.control == 32:
-            self._fader = (self._msb << 7 | msg.value) >> 4
+        # DEBUG
+        #print('Message:', msg)
+
+        # FADER
+        if msg.type == 'pitchwheel':
+            self._fader = msg.pitch
             self.on_fader(self._fader)
-        elif msg.type == 'pitchwheel':
-            self.on_rotary(1 if msg.pitch < 0 else -1)
+
+        # BUTTONS
+        elif msg.type == 'note_on':
+            # FADER TOUCH
+            if msg.note == 104:
+                self.on_fader_touch(msg.velocity != 0)
+            else:
+                button = button_from_press(msg.note)
+                if button:
+                    self.on_button(button, msg.velocity != 0)
+                else:
+                    print('Button not found:', msg.note)
+
+        # KNOB
+        elif msg.type == 'control_change' and msg.control == 16:
+            self.on_rotary(-1 if msg.value > 64 else 1)  # TODO: handle multiple clicks
+
         else:
             print('Unhandled:', msg)
 
@@ -233,22 +247,21 @@ class FaderPort(ABC):
     @fader.setter
     def fader(self, value: int):
         """Move the fader to a new position in the range 0 to 1023."""
-        self._fader = int(value) if 0 < value < 1024 else 0
-        self.outport.send(mido.Message('control_change', control=0,
-                                       value=self._fader >> 7))
-        self.outport.send(mido.Message('control_change', control=32,
-                                       value=self._fader & 0x7F))
+
+        self._fader = -8192 if value < -8192 else 8191 if value > 8191 else value
+        self.outport.send(mido.Message('pitchwheel',
+                                       pitch=self._fader))
 
     def light_on(self, button: Button):
         """Turn the light on for the given Button.
 
-        NOTE! If yuo turn the "Off" button light on, the fader won't
+        NOTE! If you turn the "Off" button light on, the fader won't
         report value updates when it's moved."""
-        self.outport.send(mido.Message('polytouch', note=button.light, value=1))
+        self.outport.send(mido.Message('note_on', note=button.press, velocity=127))
 
     def light_off(self, button: Button):
         """Turn the light off for the given Button"""
-        self.outport.send(mido.Message('polytouch', note=button.light, value=0))
+        self.outport.send(mido.Message('note_on', note=button.press, velocity=0))
 
     def all_off(self):
         """Turn all the button lights off."""
@@ -307,7 +320,7 @@ class FaderPort(ABC):
         Display a numeric countdown from 5
         :param interval: The interval in seconds for each number.
         """
-        for c in '54321':
+        for c in '9876543210':
             self.char_on(c)
             time.sleep(interval * 0.66667)
             self.all_off()
@@ -322,18 +335,18 @@ class FaderPort(ABC):
         :param ticks: How many chase steps.
         """
         seq = [
-            button_from_name('Chan Down'),
-            button_from_name('Bank'),
-            button_from_name('Chan Up'),
-            button_from_name('Output'),
-            button_from_name('Off'),
-            button_from_name('Undo'),
-            button_from_name('Loop'),
-            button_from_name('User'),
-            button_from_name('Punch'),
+            button_from_name('Solo'),
+            button_from_name('Mute'),
+            button_from_name('Arm'),
             button_from_name('Shift'),
-            button_from_name('Mix'),
             button_from_name('Read'),
+            button_from_name('Scroll'),
+            button_from_name('Marker'),
+            button_from_name('Section'),
+            button_from_name('Click'),
+            button_from_name('Master'),
+            button_from_name('Link'),
+            button_from_name('Bypass'),
         ]
 
         num_lights = num_lights if num_lights in [1, 2, 3, 4] else 2
@@ -360,7 +373,7 @@ def find_faderport_input_name(number=0):
                    In which case 0 is the first, 1 is the second etc
     :return: Port name or None
     """
-    ins = [i for i in mido.get_input_names() if i.lower().startswith('faderport')]
+    ins = [i for i in mido.get_input_names() if i.lower().startswith('presonus fp2')]
     if 0 <= number < len(ins):
         return ins[number]
     else:
@@ -376,7 +389,7 @@ def find_faderport_output_name(number=0):
                    In which case 0 is the first, 1 is the second etc
     :return: Port name or None
     """
-    outs = [i for i in mido.get_output_names() if i.lower().startswith('faderport')]
+    outs = [i for i in mido.get_output_names() if i.lower().startswith('presonus fp2')]
     if 0 <= number < len(outs):
         return outs[number]
     else:
@@ -408,17 +421,13 @@ class TestFaderPort(FaderPort):
     def on_rotary(self, direction):
         print(f"Pan turned {'clockwise' if direction > 0 else 'anti-clockwise'}.")
         if self.shift:
-            if direction > 0:
-                if self.fader < 1023:
-                    self.fader += 1
-            else:
-                self.fader -= 1
+            self.fader += direction * 32 * 10
 
     def on_button(self, button, state):
         print(f"Button: {button.name} {'pressed' if state else 'released'}")
         if button.name == 'Shift':
             self._shift = not self._shift
-        if button.name == 'Off' and not state:
+        if button.name == 'Mute' and not state:
             self.should_exit = True
         if not self.cycling:
             if state:
@@ -447,14 +456,14 @@ def consume(iterator, n):  # Copied consume From the itertool docs
 def test():
     with TestFaderPort() as f:
         f.countdown()
-        f.fader = 1023
+        f.fader = 8191
         f.snake()
-        f.fader = 512
+        f.fader = 4095
         f.blink()
-        f.fader = 128
+        f.fader = -4096
         f.chase(num_lights=3)
-        f.fader = 0
-        print('Try the buttons, the rotary and the fader. The "Off" '
+        f.fader = -8192
+        print('Try the buttons, the rotary and the fader. The "Mute" '
               'button will exit.')
         while not f.should_exit:
             time.sleep(1)

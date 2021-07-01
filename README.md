@@ -71,6 +71,7 @@ Try holding *"shift"* (on the FaderPort) and tweaking the Pan knob at the
 same time.
 
 # Change List
+- Version 2.0.0-alpha - Adapted for the second generation faderport (PreSonus FP2)
 - Version 1.0.1 - Added a reset command at startup. Sometimes when
   faderport is reconnected it can get in a weird mode. The *Bank*
   light is lit and our code doesn't work. This seems to fix it.
